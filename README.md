@@ -1,4 +1,4 @@
-## Ansible Automation Platform Project Setup
+## Ansible Project Setup using API
 
 ### Purpose
 
