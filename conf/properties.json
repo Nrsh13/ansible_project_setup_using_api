@@ -1,0 +1,79 @@
+{
+  "kafka" :
+  {
+  "project_data" : {
+    "name": "Kafka-Cluster-Setup",
+    "description": "Confluent Kafka Cluser Setup using Ansible",
+    "organization": 69,
+    "scm_url": "yourKafkaRepoURL",
+    "scm_type": "git",
+    "scm_branch": "master",
+    "scm_delete_on_update": "true",
+    "scm_clean": "true"
+  },
+
+  "inventory_data": {
+      "name": "yourKafkaInventory",
+      "description": "Kafka Cluster Inventory",
+      "organization": 69
+  },
+
+  "inventory_source_data": {
+    "name": "Kafka-Cluster-Setup",
+    "description": "Kafka Cluster Setup",
+    "overwrite_vars": "true",
+    "source": "scm",
+    "source_path": "hostsInventory.yml",
+    "update_on_project_update": "false",
+    "update_on_launch": "true"
+  },
+
+  "job_template_data": {
+    "name": "Kafka-Cluster-Setup",
+    "description": "Kafka Cluser Job Template",
+    "organization": 69,
+    "playbook": "all.yml",
+    "job_type": "run",
+    "become_enabled": "yes"
+  }
+  },
+  "informatica" :
+  {
+  "project_data" : {
+    "name": "Informatica-Setup",
+    "description": "Confluent Kafka Cluser Setup using Ansible",
+    "organization": 69,
+    "scm_url": "yourBDMRepoURL",
+    "scm_type": "git",
+    "scm_branch": "master",
+    "scm_delete_on_update": "true",
+    "scm_clean": "true"
+  },
+  "inventory_data": {
+      "name": "yourBDMInventory",
+      "description": "Informatica Cluster Inventory",
+      "organization": 69
+  },
+
+  "inventory_source_data": {
+    "name": "Informatica-Cluster-Setup",
+    "description": "Informatica Cluster Setup",
+    "overwrite_vars": "true",
+    "source": "scm",
+    "source_path": "hostsInventory.yml",
+    "update_on_project_update": "false",
+    "update_on_launch": "true"
+  },
+
+  "job_template_data": {
+    "name": "Informatica-Cluster-Setup",
+    "description": "Informatica Cluser Job Template",
+    "organization": 69,
+    "playbook": "all.yml",
+    "job_type": "run",
+    "become_enabled": "yes"
+  }
+
+  }
+}
+

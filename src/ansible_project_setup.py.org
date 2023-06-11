@@ -1,0 +1,439 @@
+import os, sys, json, urllib3, time, requests
+from requests.auth import HTTPBasicAuth
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+########### CREDENTIALS ##########
+# GET
+def get_credential_id(name):
+  response = requests.get(url=url + '/api/v2/credentials/', verify=False, headers=headers)
+  try:
+    #response = requests.get(url=url + '/api/v2/credentials/', auth = HTTPBasicAuth('admin', 'password'), verify=False)
+    response = requests.get(url=url + '/api/v2/credentials/', verify=False, headers=headers)
+    if response.ok:
+      data = response.json()
+      for i in data['results']:
+        if ( i['name'] == name ):
+          credentialID = i['id']
+          return credentialID
+    else:
+      print('ERROR: Get '+ name + ' Credential ID Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  except Exception as e:
+    print('Exception Occured: ', str(e))
+    sys.exit(1)
+
+# CREATE
+def create_credential(credential_data):
+  credential_exists = get_credential_id(credential_data["name"])
+  if ( credential_exists is None ):
+    response = requests.post(url=url + '/api/v2/credentials/', data = json.dumps(credential_data), verify=False, headers=headers)
+    if response.ok:
+      print('\nINFO: Create Credential Command Status is ' + str(response.status_code))
+      credentialID = get_credential_id(credential_data["name"])
+      print('INFO: Credential '+ str(credential_data["name"]) + ' ID is ' + str(credentialID))
+    else:
+      print('\nERROR: Create '+ str(credential_data["name"]) + ' Credential Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  else:
+    credentialID = get_credential_id(credential_data["name"])
+    print('INFO: Credential '+ str(credential_data["name"]) + ' Already Exists with Credential ID '+ str(credentialID))
+    print ('INFO: Trying '+ str(credential_data["name"]) + ' Credential Update')
+    update_credential(credential_data, credential_exists)
+
+# UPDATE
+def update_credential(credential_data, credential_exists):
+    response = requests.put(url=url + '/api/v2/credentials/' + str(credential_exists) + '/', data = json.dumps(credential_data), verify=False, headers=headers)
+    if response.ok:
+      print ('INFO: Updated '+ str(credential_data["name"]) + ' Credential Successfully\n')
+    else:
+      print('ERROR: Update '+ str(credential_data["name"]) + ' Credential Failed - ' + str(response.content) + '\n')
+      sys.exit(1)
+
+# DELETE
+def delete_credential(name):
+  credentialID = get_credential_id(name)
+  print('INFO: Deleting '+ name + ' Credential ID '+ str(credentialID))
+  response = requests.delete(url=url + '/api/v2/credentials/'+ str(credentialID) + '/', verify=False, headers=headers)
+  if response.ok:
+    print ('INFO: Deleted '+ name + ' Credential Successfully\n')
+  else:
+    print('ERROR: Delete '+ name + ' Credentials Failed - ' + str(response.content) + '\n')
+    sys.exit(1)
+
+
+########### Project ##########
+# GET
+def get_project_id(name):
+  try:
+    response = requests.get(url=url + '/api/v2/projects/', verify=False, headers=headers)
+    if response.ok:
+      data = response.json()
+      for i in data['results']:
+        if ( i['name'] == name ):
+          ProjectID = i['id']
+          return ProjectID
+    else:
+      print('ERROR: Get '+ name + ' Project ID Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  except Exception as e:
+    print('Exception Occured: ', str(e))
+    sys.exit(1)
+
+# CREATE
+def create_project(project_data):
+  project_exists = get_project_id(project_data["name"])
+  # Bitbucket
+  #project_data["scm_url"]  = "GithubURL"
+  bitBucketCredID = get_credential_id("BitBucket-Secret")
+  project_data["credential"] = bitBucketCredID
+  # Github
+  #project_data["scm_url"]  = "BitbucketURL"
+  #GitCredID = get_credential_id("Github-Secret")
+  #project_data["credential"] = GitCredID
+
+  if ( project_exists is None ):
+    response = requests.post(url=url + '/api/v2/projects/', data = json.dumps(project_data), verify=False, headers=headers)
+    if response.ok:
+      print ('INFO: Create '+ str(project_data["name"]) + ' Project Command Status ' +  str(response.status_code))
+      kafkaProjectID = get_project_id(project_data["name"])
+      print('INFO: Project '+ str(project_data["name"]) + ' ID '+ str(kafkaProjectID) + '\n')
+    else:
+      print('ERROR: Create '+ str(project_data["name"]) + ' Project Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  else:
+    kafkaProjectID = get_project_id(project_data["name"])
+    print('INFO: Project '+ str(project_data["name"]) + ' Already Exists with Project ID '+ str(kafkaProjectID))
+    print ('INFO: Trying '+ str(project_data["name"]) + ' Project Update')
+    update_project(project_data, project_exists)
+
+# UPDATE
+def update_project(project_data, project_exists):
+    # BitBucket
+    bitBucketCredID = get_credential_id("BitBucket-Secret")
+    project_data["credential"] = bitBucketCredID
+    # Github
+    #GitCredID = get_credential_id("Github-Secret")
+    #project_data["credential"] = GitCredID
+    response = requests.put(url=url + '/api/v2/projects/' + str(project_exists) + '/', data = json.dumps(project_data), verify=False, headers=headers)
+    #print(project_data)
+    if response.ok:
+      print ('INFO: Project '+ str(project_data["name"]) + ' Updated Successfully\n')
+    else:
+      print('ERROR: Update '+ str(project_data["name"]) + ' Project Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+
+# DELETE
+def delete_project(name):
+  kafkaProjectID = get_project_id(project_data["name"])
+  print('INFO: Deleting '+ name + ' Project ID '+ str(kafkaProjectID))
+  response = requests.delete(url=url + '/api/v2/projects/'+ str(kafkaProjectID) + '/', verify=False, headers=headers)
+  if response.ok:
+    print ('INFO: Deleted '+ name + ' Project Successfully')
+  else:
+    print('ERROR: Delete '+ name + ' Project Failed - ' + str(response.content) + '\n')
+    sys.exit(1)
+
+
+########### Inventory ##########
+# GET
+def get_inventory_id(name):
+  try:
+    response = requests.get(url=url + '/api/v2/inventories/', verify=False,headers=headers)
+    if response.ok:
+      data = response.json()
+      for i in data['results']:
+        if ( i['name'] == name ):
+          InventoryID = i['id']
+          return InventoryID
+    else:
+      print('ERROR: Get '+ name + ' Inventory Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  except Exception as e:
+    print('Exception Occured: ', str(e))
+    sys.exit(1)
+
+# CREATE
+def create_inventory(inventory_data):
+  inventory_exists = get_inventory_id(inventory_data["name"])
+  if ( inventory_exists is None ):
+    response = requests.post(url=url + '/api/v2/inventories/', data = json.dumps(inventory_data), verify=False, headers=headers)
+    if response.ok:
+      print ('\nINFO: Create '+ str(inventory_data["name"]) + ' Inventory Command Status is ' + str(response.status_code))
+      kafkaInventoryID = get_inventory_id(inventory_data["name"])
+      print('INFO: Inventory '+ str(inventory_data["name"]) + ' ID - '+ str(kafkaInventoryID))
+    else:
+      print('ERROR: Create '+ str(inventory_data["name"]) + ' Inventory Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  else:
+    print('INFO: Inventory '+ str(inventory_data["name"]) + ' Already Exists')
+    kafkaInventoryID = get_inventory_id(inventory_data["name"])
+    print('INFO: Existing '+ str(inventory_data["name"]) + ' Inventory ID is '+ str(kafkaInventoryID) + '\n')
+
+# UPDATE
+
+
+# DELETE
+def delete_inventory(name):
+  kafkaInventoryID = get_inventory_id(name)
+  print('INFO: Deleting Inventory ID '+ str(kafkaInventoryID))
+  response = requests.delete(url=url + '/api/v2/inventories/'+ str(kafkaInventoryID) + '/', verify=False, headers=headers)
+  if response.ok:
+    print ('INFO: Deleted '+ name + ' Inventory Successfully\n')
+  else:
+    print('ERROR: Delete '+ name + ' Inventory Failed - ' + str(response.content) + '\n')
+    sys.exit(1)
+
+
+########## Inventory Source ##########
+# GET
+def get_inventory_source_id(name):
+  try:
+    response = requests.get(url=url + '/api/v2/inventory_sources/', verify=False,headers=headers)
+    if response.ok:
+      data = response.json()
+      #print (data)
+      for i in data['results']:
+        if ( i['name'] == name ):
+          InventorySourceID = i['id']
+          return InventorySourceID
+    else:
+      print('ERROR: Get '+ name + ' Inventory Source ID Failed - ' + srt(response.reason) + '\n')
+      sys.exit(1)
+  except Exception as e:
+    print('Exception Occured: ', str(e))
+    sys.exit(1)
+
+
+# CREATE
+def create_inventory_source(inventory_source_data):
+  inventory_source_exists = get_inventory_source_id(inventory_source_data["name"])
+  if ( inventory_source_exists is None ):
+    kafkaProjectID = get_project_id(project_data["name"])
+    inventory_source_data['source_project'] = kafkaProjectID
+    kafkaInventoryID = get_inventory_id(inventory_data["name"])
+    inventory_source_data['inventory'] = kafkaInventoryID
+    response = requests.post(url=url + '/api/v2/inventory_sources/', data = json.dumps(inventory_source_data), verify=False, headers=headers )
+    if response.ok:
+      print ('INFO: Create '+ str(inventory_source_data["name"]) + ' Inventory Source Command Status is ' + str(response.status_code))
+    else:
+      print('ERROR: Create '+ str(inventory_source_data["name"]) + ' Inventory Source Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  else:
+    kafkaInventorySourceID = get_inventory_source_id(inventory_source_data["name"])
+    print('INFO: Inventory '+ str(inventory_source_data["name"]) + ' Source Exists with ID '+ str(kafkaInventorySourceID))
+    print ('INFO: Trying '+ str(inventory_source_data["name"]) + ' Inventory Source Update')
+    update_inventory_source(inventory_source_data, inventory_source_exists)
+
+# UPDATE
+def update_inventory_source(inventory_source_data, inventory_source_exists):
+    kafkaProjectID = get_project_id(project_data["name"])
+    inventory_source_data['source_project'] = kafkaProjectID
+    kafkaInventoryID = get_inventory_id(inventory_data["name"])
+    inventory_source_data['inventory'] = kafkaInventoryID
+    response = requests.put(url=url + '/api/v2/inventory_sources/' + str(inventory_source_exists) + '/', data = json.dumps(inventory_source_data), verify=False,headers=headers)
+    if response.ok:
+      print ('INFO: Updated '+ str(inventory_source_data["name"]) + ' Inventory Source Successfully\n')
+    else:
+      print('ERROR: Update '+ str(inventory_source_data["name"]) + ' Inventory Source Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+
+
+
+########## Job Template ##########
+# GET
+def get_job_template_id(name):
+  try:
+    response = requests.get(url=url + '/api/v2/job_templates/', verify=False, headers=headers)
+    if response.ok:
+      data = response.json()
+      for i in data['results']:
+        if ( i['name'] == name ):
+          jobTemplateID = i['id']
+          return jobTemplateID
+    else:
+      print('ERROR: Get '+ name + ' Job Tempalte ID Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  except Exception as e:
+    print('Exception Occured: ', str(e))
+    sys.exit(1)
+
+# CREATE
+def create_job_template(job_template_data):
+  job_template_exists = get_job_template_id(job_template_data["name"])
+  if ( job_template_exists is None ):
+    kafkaProjectID = get_project_id(project_data["name"])
+    job_template_data['project'] = kafkaProjectID
+    kafkaInventoryID = get_inventory_id(inventory_data["name"])
+    job_template_data['inventory'] = kafkaInventoryID
+    bitBucketCredID = get_credential_id("BitBucket-Secret")
+    job_template_data["credential"] = bitBucketCredID
+    response = requests.post(url=url + '/api/v2/job_templates/', data = json.dumps(job_template_data), verify=False, headers=headers)
+    if response.ok:
+      print ('INFO: Create '+ str(job_template_data["name"]) + ' Job Template Command Status is ' + str(response.status_code))
+    else:
+      print('ERROR: Create '+ str(job_template_data["name"]) + ' Job Template Failed - ' + str(response.reason) + '\n')
+      sys.exit(1)
+  else:
+    jobTemplateID = get_job_template_id(job_template_data["name"])
+    print('INFO: Job '+ str(job_template_data["name"]) + ' Template Exists with ID '+ str(jobTemplateID))
+    print ('INFO: Trying '+ str(job_template_data["name"]) + ' Job Template Update')
+    update_job_template(job_template_data, jobTemplateID)
+
+# UPDATE
+def update_job_template(job_template_data, jobTemplateID):
+    kafkaProjectID = get_project_id(project_data["name"])
+    job_template_data['project'] = kafkaProjectID
+    kafkaInventoryID = get_inventory_id(inventory_data["name"])
+    job_template_data['inventory'] = kafkaInventoryID
+    response = requests.put(url=url + '/api/v2/job_templates/' + str(jobTemplateID) + '/', data = json.dumps(job_template_data), verify=False, headers=headers)
+    if response.ok:
+      print ('INFO: Updated '+ str(job_template_data["name"]) + ' Job Template Successfully\n')
+    else:
+      print('ERROR: Update '+ str(job_template_data["name"]) + ' Job Tempalte Failed - ' + str(response.content) + '\n')
+      sys.exit(1)
+
+# ATTACH Creds TO JOB Tempalte
+def attach_credentials(name,credentials_list):
+  for cred in credentials_list:
+    data = {"associate": "true"}
+    jobTemplateID = get_job_template_id(name)
+    credID = get_credential_id(cred)
+    data["id"] = credID
+    response = requests.post(url=url + '/api/v2/job_templates/' + str(jobTemplateID) + '/credentials/', data = json.dumps(data), verify=False, headers=headers)
+    if response.ok:
+      print ('INFO: Credential '+ cred + ' ID ' + str(credID)  + ' Attached')
+    else:
+      print('INFO: Credential '+ cred + ' ID ' + str(credID)  + ' Already Attached')
+  print('\n')   
+
+# DELETE
+def delete_job_template(name):
+  kafkaJobTemplateID = get_job_template_id(name)
+  print('\nINFO: Deleting '+ name + ' Job Template ID - '+ str(kafkaJobTemplateID))
+  response = requests.delete(url=url + '/api/v2/job_templates/'+ str(kafkaJobTemplateID) + '/', verify=False, headers=headers)
+  if response.ok:
+    print ('INFO: Deleted '+ name + ' Job Template Command Status is ' + str(response.reason) + '\n')
+  else:
+    print('ERROR: Delete '+ name + ' Job Template Failed - ' + str(response.content) + '\n')
+    sys.exit(1)
+
+
+
+########## MAIN ##########
+
+if __name__ == '__main__':
+
+  # Check Arguments
+  if len(sys.argv) != 2:
+    print ('\nERROR: Need Argument Action (create or delete) - \n')
+    print ('\tpython ' + sys.argv[0] + ' create|delete\n')
+    sys.exit(1)
+  else:
+    if sys.argv[1] not in ["create", "delete"]:
+      print ('\nERROR: Invalid Action - Use create or delete\n')
+      print ('\tpython ' + sys.argv[0] + ' create|delete\n')
+      sys.exit(1)
+
+  action = sys.argv[1]
+
+  import json
+  print("\n--- Crednetials Setup\n")
+
+  with open('../conf/credentials.json', 'r') as c:
+    data = json.load(c)
+    aap_api_token = data['aap_api_token']
+    url = data['ansible_tower_url']
+    headers = {
+      "Content-Type": "application/json",
+      "Authorization": f"Bearer {aap_api_token}",
+    }
+    credentials_data = data['credentials']
+    if action.lower() == 'create':
+      for credential in credentials_data:
+        create_credential(credential)
+    else:
+      for credential in credentials_data:
+        credential_exists = get_credential_id(credential["name"])
+        if ( credential_exists is None ):
+          print('\nINFO: Credential ' + credential["name"] + ' Does not Exists')
+        else:
+          delete_credential(credential["name"])
+    c.close()
+ 
+  with open('../conf/properties.json', 'r') as f:
+    data = json.load(f)
+    components = list(data.keys())  # in properties.json - kafka, informatica, emr etc
+
+    for component in components:
+      sub_components = list(data[component].keys()) # Check if project_data, inventory_data etc exists)
+
+      if action.lower() == 'create':
+
+        print ('\n--- ' + component.upper() + ': Creating Project, Inventory and Job Template\n')
+
+        # Project Actions
+        #print ('\n## INFO: Project in Progress\n')
+        if 'project_data'in sub_components:
+          project_data = data[component]['project_data']
+          create_project(project_data)
+        else:
+          print('\nINFO: No Project to Create for ' + component + '\n')
+
+        # Inventory Actions
+        #print ('\n## INFO: Inventory in Progress\n')
+        if 'inventory_data'in sub_components:
+          inventory_data = data[component]['inventory_data']
+          create_inventory(inventory_data)
+        else:
+          print('\nINFO: No Inventory  to Create for ' + component + '\n')
+
+        # Inventory Source Actions
+        #print ('\n## INFO: Inventory Source in Progress\n')
+        if 'inventory_source_data'in sub_components:
+          inventory_source_data = data[component]['inventory_source_data']
+          #create_inventory_source(inventory_source_data)
+        else:
+          print('\nINFO: No Inventory Source Data  to Create for ' + component + '\n')
+
+        # Job Template Actions
+        #print ('\n## INFO: Job Template in Progress\n')
+        time.sleep(30) # Wait for Credentials/Project to be ready. Else BAD Request ERROR
+        if 'job_template_data'in sub_components:
+          job_template_data = data[component]['job_template_data']
+          create_job_template(job_template_data)
+          attach_credentials(job_template_data["name"],["Machine-Secret", "Vault-Secret"])	  
+        else:
+          print('\nINFO: No Job Template to Create for ' + component + '\n')
+
+
+      else:
+        print ('\n\n--- ' + component.upper() + ': Deleting Project, Inventory and Job Template\n')
+
+        #print ('\n## INFO: Project in Progress\n')
+        if 'project_data'in sub_components:
+          project_data = data[component]['project_data']
+          project_exists = get_project_id(project_data["name"])
+          if ( project_exists is None ):
+            print('\nINFO: Project ' + project_data["name"] + ' Does not Exists')
+          else:  
+            delete_project(project_data["name"])
+
+        #print ('\n## INFO: Inventory in Progress\n')
+        if 'inventory_data'in sub_components:
+          inventory_data = data[component]['inventory_data']
+          inventory_exists = get_inventory_id(inventory_data["name"])
+          if ( inventory_exists is None ):
+            print('\nINFO: Inventory ' + inventory_data["name"] + ' Does not Exists')
+          else:
+            pass #Dont have permissions
+            #delete_inventory(inventory_data["name"])
+
+        #print ('\n## INFO: Job Template in Progress\n')
+        if 'job_template_data'in sub_components:
+          job_template_data = data[component]['job_template_data']
+          job_template_exists = get_job_template_id(job_template_data["name"])
+          if ( job_template_exists is None ):
+            print('\nINFO: Job Template ' + job_template_data["name"] + ' Does not Exists\n')
+          else:
+            delete_job_template(job_template_data["name"])
+
